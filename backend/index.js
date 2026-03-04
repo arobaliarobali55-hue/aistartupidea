@@ -190,4 +190,5 @@ app.listen(PORT, () => {
     console.log(`🚀 aistartupidea Backend running on port ${PORT}`);
     console.log(`✨ NVIDIA NIM AI Engine Initialized (${NVIDIA_MODEL})`);
     console.log(`🔒 Security: Rate Limiting and Firebase Auth enabled`);
+    console.log(`🌐 CORS Enabled for origins: ${JSON.stringify(allowedOrigins)}`);
 });

@@ -56,11 +56,11 @@ const App = () => {
         try {
           const userDoc = await getDoc(doc(db, 'users', newUser.uid));
           if (userDoc.exists()) {
-            const data = userDoc.data();
-            const userPlan = data.plan || 'free';
-            const limit = data.plan_limit || PLAN_LIMITS[userPlan] || 2;
-            const usage = data.daily_usage || 0;
-            const usageDate = data.last_usage_date || '';
+            const userData = userDoc.data();
+            const userPlan = userData.plan || 'free';
+            const limit = userData.plan_limit || PLAN_LIMITS[userPlan] || 2;
+            const usage = userData.daily_usage || 0;
+            const usageDate = userData.last_usage_date || '';
             setUserPlan(userPlan);
             setIdeaLimit(limit);
             setDailyUsage(usage);
@@ -122,8 +122,8 @@ const App = () => {
         if (!userDoc.exists() || !userDoc.data().plan) {
           setView('plan-select');
         } else {
-          const data = userDoc.data();
-          const plan = data.plan || 'free';
+          const userData = userDoc.data();
+          const plan = userData.plan || 'free';
           const { allowed, upgradeMsg } = await checkDailyLimit(auth.currentUser.uid, plan);
           if (!allowed) {
             toast.error(upgradeMsg, { duration: 6000 });
@@ -185,9 +185,9 @@ const App = () => {
     try {
       const userDoc = await getDoc(doc(db, 'users', userId));
       if (userDoc.exists()) {
-        const data = userDoc.data();
-        const lastDate = data.last_usage_date || '';
-        const dailyUsage = data.daily_usage || 0;
+        const userData = userDoc.data();
+        const lastDate = userData.last_usage_date || '';
+        const dailyUsage = userData.daily_usage || 0;
 
         // If it's a new day, usage is effectively 0
         const currentUsage = lastDate === todayStr ? dailyUsage : 0;
@@ -257,7 +257,7 @@ const App = () => {
         answers: quizAnswers,
         plan: userPlan,
         limit: ideaLimit,
-      }, { headers });
+      }, { headers, timeout: 30000 });
 
       const ideas = response.data;
       if (!ideas || ideas.length === 0) {
@@ -290,9 +290,9 @@ const App = () => {
 
             let newUsage = ideas.length; // Increment by many ideas
             if (userDoc.exists()) {
-              const data = userDoc.data();
-              if (data.last_usage_date === todayStr) {
-                newUsage = (data.daily_usage || 0) + ideas.length;
+              const userData = userDoc.data();
+              if (userData.last_usage_date === todayStr) {
+                newUsage = (userData.daily_usage || 0) + ideas.length;
               }
             }
 
@@ -315,7 +315,22 @@ const App = () => {
       }
     } catch (error) {
       console.error('Error generating ideas:', error);
-      const msg = error?.response?.data?.error || error.message || 'Something went wrong.';
+      
+      let msg = 'Something went wrong.';
+      
+      if (error.code === 'ECONNABORTED') {
+        msg = 'Request timeout. The AI service is taking too long to respond. Please try again.';
+      } else if (error.response) {
+        // Server responded with error
+        msg = error.response.data?.error || `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        // Request made but no response - likely CORS or network issue
+        console.error('Network/CORS error detected:', error.request);
+        msg = 'Network error. Unable to connect to the AI service. Please check your internet connection or try again later.';
+      } else {
+        msg = error.message || 'Something went wrong.';
+      }
+      
       setGenerateError(msg);
       setView('error');
     }

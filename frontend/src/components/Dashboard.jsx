@@ -155,15 +155,15 @@ const Dashboard = ({ user, userPlan, onGoHome, onChangePlan }) => {
                     where('user_id', '==', user.uid)
                 );
                 const querySnapshot = await getDocs(q);
-                let data = querySnapshot.docs.map(doc => ({
+                const ideasData = querySnapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data(),
                     created_at: doc.data().created_at?.toDate() || new Date()
                 }));
 
                 // Sort by created_at desc client-side
-                data.sort((a, b) => b.created_at - a.created_at);
-                setIdeas(data);
+                ideasData.sort((a, b) => b.created_at - a.created_at);
+                setIdeas(ideasData);
             } catch (error) {
                 console.error('Error fetching ideas:', error);
                 toast.error('Could not load your ideas.');
@@ -183,12 +183,12 @@ const Dashboard = ({ user, userPlan, onGoHome, onChangePlan }) => {
             try {
                 const userDoc = await getDoc(doc(db, 'users', user.uid));
                 if (userDoc.exists()) {
-                    const data = userDoc.data();
+                    const profileData = userDoc.data();
                     const resolved = {
-                        full_name: data.full_name || user.displayName || '',
-                        avatar_url: data.avatar_url || user.photoURL || AVATAR_OPTIONS[0],
-                        bio: data.bio || '',
-                        website: data.website || '',
+                        full_name: profileData.full_name || user.displayName || '',
+                        avatar_url: profileData.avatar_url || user.photoURL || AVATAR_OPTIONS[0],
+                        bio: profileData.bio || '',
+                        website: profileData.website || '',
                     };
                     setProfile(resolved);
                 } else {
