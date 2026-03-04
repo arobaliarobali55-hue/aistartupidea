@@ -36,13 +36,15 @@ console.log('Allowed Origins:', allowedOrigins);
 
 app.use(cors({
     origin: (origin, callback) => {
-        // allow requests with no origin (like mobile apps or curl requests)
         const isAllowed = !origin || allowedOrigins.includes(origin);
         if (isAllowed) {
             callback(null, true);
         } else {
-            console.warn(`CORS blocked request from origin: ${origin}`);
-            callback(new Error('Not allowed by CORS'));
+            console.warn(`[CORS Blocked] Origin: ${origin}`);
+            console.log(`[CORS Debug] Allowed: ${JSON.stringify(allowedOrigins)}`);
+            // Pass null, false instead of Error to avoid 500 status
+            // This allows the browser to receive a proper CORS failure message
+            callback(null, false);
         }
     },
     methods: ['GET', 'POST'],
