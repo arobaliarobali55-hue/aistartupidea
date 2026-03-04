@@ -56,6 +56,7 @@ const App = () => {
         try {
           const userDoc = await getDoc(doc(db, 'users', newUser.uid));
           if (userDoc.exists()) {
+            const data = userDoc.data();
             const userPlan = data.plan || 'free';
             const limit = data.plan_limit || PLAN_LIMITS[userPlan] || 2;
             const usage = data.daily_usage || 0;

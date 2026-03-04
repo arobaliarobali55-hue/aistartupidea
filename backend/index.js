@@ -54,6 +54,10 @@ const openai = new OpenAI({
 
 const NVIDIA_MODEL = process.env.NVIDIA_MODEL_NAME || 'meta/llama-3.1-70b-instruct';
 
+app.get('/', (req, res) => {
+    res.send('🚀 aistartupidea API is running! Use /api/health for status.');
+});
+
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
