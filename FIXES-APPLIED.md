@@ -61,9 +61,51 @@ timeout: 30000 // 30 second timeout for AI requests
 
 ---
 
-## Files Modified
+## Timeout Error Fix (Latest)
 
-### Frontend Changes
+### Issue
+Users were experiencing timeout errors after 30 seconds when generating AI business ideas:
+```
+Error generating ideas: AxiosError: timeout of 30000ms exceeded
+```
+
+### Solution
+Increased timeout thresholds and improved retry logic on both frontend and backend.
+
+### Files Modified
+
+#### Frontend Changes
+1. **App.jsx**
+   - Line 260: Increased axios timeout from `30000ms` to `120000ms` (2 minutes)
+   - Line 322: Enhanced timeout error message to inform users about high demand scenarios
+
+#### Backend Changes
+1. **index.js**
+   - Line 122: Added `timeout: 60000` (60 seconds) to OpenAI API call
+   - Line 125: Enhanced retry logic to include timeout errors
+   - Line 128: Increased base retry delay from `1000ms` to `2000ms`
+   - Line 129: Improved logging to show timeout status
+
+### Technical Details
+
+**Timeout Configuration:**
+- Frontend → Backend: 2 minutes (120000ms)
+- Backend → NVIDIA API: 60 seconds (60000ms) per request
+- Retry attempts: Up to 3 times with exponential backoff (2s, 4s, 8s)
+
+**Why This Works:**
+- AI model responses can take 30-60 seconds, especially for multiple ideas
+- The previous 30s timeout was too aggressive
+- Longer timeouts prevent premature failures
+- Retry logic handles temporary service unavailability
+
+---
+
+## Previous Fixes
+
+### Files Modified
+
+#### Frontend Changes
 1. **App.jsx**
    - Line 59: `data` → `userData` (auth state listener)
    - Line 125: `data` → `userData` (handleAuthSuccess)
@@ -76,7 +118,7 @@ timeout: 30000 // 30 second timeout for AI requests
    - Line 158: `let data` → `const ideasData` (fetch history)
    - Line 186: `data` → `profileData` (fetch profile)
 
-### Backend Changes
+#### Backend Changes
 1. **index.js**
    - Line 193: Added CORS origins log for debugging
 

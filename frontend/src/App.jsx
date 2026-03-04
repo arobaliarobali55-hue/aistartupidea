@@ -257,7 +257,7 @@ const App = () => {
         answers: quizAnswers,
         plan: userPlan,
         limit: ideaLimit,
-      }, { headers, timeout: 30000 });
+      }, { headers, timeout: 120000 }); // 2 minutes timeout for AI generation
 
       const ideas = response.data;
       if (!ideas || ideas.length === 0) {
@@ -319,7 +319,7 @@ const App = () => {
       let msg = 'Something went wrong.';
       
       if (error.code === 'ECONNABORTED') {
-        msg = 'Request timeout. The AI service is taking too long to respond. Please try again.';
+        msg = 'Request timeout. The AI service is taking longer than expected. This can happen during high demand. Please wait a moment and try again.';
       } else if (error.response) {
         // Server responded with error
         msg = error.response.data?.error || `Server error: ${error.response.status}`;

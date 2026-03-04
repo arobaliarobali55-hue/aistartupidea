@@ -118,15 +118,17 @@ CRITICAL: Heavily weigh the user's interests, experience, and vision to ensure t
                         { role: 'system', content: "You are a business idea generator. Return only valid JSON array of business ideas. Follow the requested format exactly." },
                         { role: 'user', content: prompt }
                     ],
-                    response_format: { type: "json_object" }
+                    response_format: { type: "json_object" },
+                    timeout: 60000 // 60 second timeout for each AI request
                 });
             } catch (error) {
                 // OpenAI error codes handling
-                const isRetryable = error.status === 503 || error.status === 429 || error.message.includes('busy');
+                const isRetryable = error.status === 503 || error.status === 429 || 
+                                   error.message.includes('busy') || error.message.includes('timeout');
 
                 if (isRetryable && retryCount < MAX_RETRIES) {
-                    const delay = Math.pow(2, retryCount) * 1000;
-                    console.log(`⚠️ AI Busy/Rate Limited (${error.status}). Retrying in ${delay / 1000}s... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
+                    const delay = Math.pow(2, retryCount) * 2000; // Increased base delay to 2s
+                    console.log(`⚠️ AI Busy/Rate Limited (${error.status || 'timeout'}). Retrying in ${delay / 1000}s... (Attempt ${retryCount + 1}/${MAX_RETRIES})`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     return generateWithRetry(retryCount + 1);
                 }
