@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const admin = require('firebase-admin');
 const rateLimit = require('express-rate-limit');
 const { verifyToken } = require('./authMiddleware');

@@ -56,11 +56,11 @@ const App = () => {
         try {
           const userDoc = await getDoc(doc(db, 'users', newUser.uid));
           if (userDoc.exists()) {
-            const data = userDoc.data();
-            const limit = data.plan_limit || PLAN_LIMITS[plan] || 2;
+            const userPlan = data.plan || 'free';
+            const limit = data.plan_limit || PLAN_LIMITS[userPlan] || 2;
             const usage = data.daily_usage || 0;
             const usageDate = data.last_usage_date || '';
-            setUserPlan(plan);
+            setUserPlan(userPlan);
             setIdeaLimit(limit);
             setDailyUsage(usage);
             setLastUsageDate(usageDate);
