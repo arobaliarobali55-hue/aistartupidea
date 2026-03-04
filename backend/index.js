@@ -27,28 +27,40 @@ const limiter = rateLimit({
 });
 
 // --- CORS Configuration ---
+const DEFAULT_ORIGINS = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://aistartupidea-seven.vercel.app', // production frontend
+];
+
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-    : ['http://localhost:5173'];
+    : DEFAULT_ORIGINS;
 
 console.log('--- CORS Configuration ---');
 console.log('Allowed Origins:', allowedOrigins);
 
 app.use(cors({
     origin: (origin, callback) => {
-        const isAllowed = !origin || allowedOrigins.includes(origin);
-        if (isAllowed) {
-            callback(null, true);
-        } else {
-            console.warn(`[CORS Blocked] Origin: ${origin}`);
-            console.log(`[CORS Debug] Allowed: ${JSON.stringify(allowedOrigins)}`);
-            // Pass null, false instead of Error to avoid 500 status
-            // This allows the browser to receive a proper CORS failure message
-            callback(null, false);
+        // Allow requests with no origin (e.g. mobile apps, curl, Postman)
+        if (!origin) return callback(null, true);
+
+        // Check exact match first
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+
+        // Allow any *.vercel.app subdomain (covers preview deployments)
+        if (/^https:\/\/[a-zA-Z0-9-]+-[a-zA-Z0-9-]+\.vercel\.app$/.test(origin) ||
+            origin.endsWith('.vercel.app')) {
+            return callback(null, true);
         }
+
+        console.warn(`[CORS Blocked] Origin: ${origin}`);
+        console.log(`[CORS Debug] Allowed list: ${JSON.stringify(allowedOrigins)}`);
+        callback(null, false);
     },
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    methods: ['GET', 'POST', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
 }));
 
 app.use(express.json());
@@ -123,8 +135,8 @@ CRITICAL: Heavily weigh the user's interests, experience, and vision to ensure t
                 });
             } catch (error) {
                 // OpenAI error codes handling
-                const isRetryable = error.status === 503 || error.status === 429 || 
-                                   error.message.includes('busy') || error.message.includes('timeout');
+                const isRetryable = error.status === 503 || error.status === 429 ||
+                    error.message.includes('busy') || error.message.includes('timeout');
 
                 if (isRetryable && retryCount < MAX_RETRIES) {
                     const delay = Math.pow(2, retryCount) * 2000; // Increased base delay to 2s
