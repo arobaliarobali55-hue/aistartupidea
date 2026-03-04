@@ -252,7 +252,7 @@ const App = () => {
         headers = { Authorization: `Bearer ${idToken}` };
       }
 
-      const response = await axios.post('http://localhost:5000/api/generate', {
+      const response = await axios.post('https://aistartupidea.onrender.com/api/generate', {
         answers: quizAnswers,
         plan: userPlan,
         limit: ideaLimit,
