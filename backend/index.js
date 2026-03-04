@@ -28,14 +28,20 @@ const limiter = rateLimit({
 
 // --- CORS Configuration ---
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
+    ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
     : ['http://localhost:5173'];
+
+console.log('--- CORS Configuration ---');
+console.log('Allowed Origins:', allowedOrigins);
 
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
+        // allow requests with no origin (like mobile apps or curl requests)
+        const isAllowed = !origin || allowedOrigins.includes(origin);
+        if (isAllowed) {
             callback(null, true);
         } else {
+            console.warn(`CORS blocked request from origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
