@@ -246,12 +246,17 @@ const App = () => {
         }
       }
 
+      let headers = {};
+      if (user) {
+        const idToken = await user.getIdToken();
+        headers = { Authorization: `Bearer ${idToken}` };
+      }
+
       const response = await axios.post('http://localhost:5000/api/generate', {
         answers: quizAnswers,
-        userId: user?.uid,
         plan: userPlan,
         limit: ideaLimit,
-      });
+      }, { headers });
 
       const ideas = response.data;
       if (!ideas || ideas.length === 0) {

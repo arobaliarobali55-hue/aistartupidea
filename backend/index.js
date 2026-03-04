@@ -1,13 +1,45 @@
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
-const OpenAI = require('openai');
+const admin = require('firebase-admin');
+const rateLimit = require('express-rate-limit');
+const { verifyToken } = require('./authMiddleware');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// --- Firebase Admin Initialization ---
+if (!admin.apps.length) {
+    admin.initializeApp({
+        projectId: process.env.FIREBASE_PROJECT_ID
+    });
+}
+
+// --- Rate Limiting ---
+const limiter = rateLimit({
+    windowMs: parseInt(process.env.RATELIMIT_WINDOW_MS) || 60000, // 1 minute
+    max: parseInt(process.env.RATELIMIT_MAX) || 100, // Limit each IP to 100 requests per windowMs
+    message: { error: 'Too many requests, please try again later.' },
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// --- CORS Configuration ---
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:5173'];
+
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json());
+app.use('/api/', limiter); // Apply rate limiting to all /api routes
 
 // --- NVIDIA NIM (OpenAI-compatible) API Setup ---
 const openai = new OpenAI({
@@ -25,8 +57,9 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-app.post('/api/generate', async (req, res) => {
-    const { answers, userId, plan, limit } = req.body;
+app.post('/api/generate', verifyToken, async (req, res) => {
+    const { answers, plan, limit } = req.body;
+    const userId = req.user.uid; // Securely get UID from verified token
 
     if (!answers) {
         return res.status(400).json({ error: 'Answers are required' });
@@ -137,7 +170,7 @@ CRITICAL: Heavily weigh the user's interests, experience, and vision to ensure t
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 TemOS Backend running on port ${PORT}`);
+    console.log(`🚀 aistartupidea Backend running on port ${PORT}`);
     console.log(`✨ NVIDIA NIM AI Engine Initialized (${NVIDIA_MODEL})`);
-    console.log(`🔒 Authentication provided by Firebase Client SDK`);
+    console.log(`🔒 Security: Rate Limiting and Firebase Auth enabled`);
 });
