@@ -97,6 +97,61 @@ const App = () => {
     return () => unsubscribe();
   }, []); // Empty deps — subscribe only once on mount
 
+  // ── Handle Dodo payment success redirect ──
+  // When Dodo redirects back to: /?payment=success&plan=pro
+  // Show a toast, re-fetch the user's plan, clean the URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paymentStatus = params.get('payment');
+    const paidPlan = params.get('plan');
+
+    if (paymentStatus === 'success') {
+      // Clean URL immediately
+      window.history.replaceState({}, '', '/');
+
+      // Show success messages
+      const planLabel = paidPlan
+        ? paidPlan.charAt(0).toUpperCase() + paidPlan.slice(1)
+        : 'Your';
+      toast.success(`🎉 ${planLabel} plan activated! Payment successful.`, { duration: 5000 });
+
+      // Re-fetch user plan from Firestore (webhook may have already updated it)
+      const refreshPlan = async () => {
+        if (!auth.currentUser) return;
+        // Poll Firestore a couple of times since webhook may be slightly delayed
+        let attempts = 0;
+        const maxAttempts = 5;
+        const poll = async () => {
+          attempts++;
+          try {
+            const userDoc = await getDoc(doc(db, 'users', auth.currentUser.uid));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              const newPlan = userData.plan || 'free';
+              const newLimit = userData.plan_limit || PLAN_LIMITS[newPlan] || 2;
+              setUserPlan(newPlan);
+              setIdeaLimit(newLimit);
+              console.log(`✅ Plan refreshed after payment: ${newPlan}`);
+              // If plan still shows 'free' and we expect a paid plan, retry
+              if (paidPlan && newPlan === 'free' && attempts < maxAttempts) {
+                setTimeout(poll, 2000);
+              }
+            }
+          } catch (err) {
+            console.error('Error refreshing plan after payment:', err);
+          }
+        };
+        await poll();
+      };
+
+      // Small delay to let the webhook fire first
+      setTimeout(refreshPlan, 1500);
+
+      // Navigate to dashboard to show new plan
+      setView('dashboard');
+    }
+  }, []); // Run once on mount
+
   const handleStartQuiz = async () => {
     console.log('handleStartQuiz triggered. User:', !!user);
     if (!user) {
@@ -315,9 +370,9 @@ const App = () => {
       }
     } catch (error) {
       console.error('Error generating ideas:', error);
-      
+
       let msg = 'Something went wrong.';
-      
+
       if (error.code === 'ECONNABORTED') {
         msg = 'Request timeout. The AI service is taking longer than expected. This can happen during high demand. Please wait a moment and try again.';
       } else if (error.response) {
@@ -330,7 +385,7 @@ const App = () => {
       } else {
         msg = error.message || 'Something went wrong.';
       }
-      
+
       setGenerateError(msg);
       setView('error');
     }

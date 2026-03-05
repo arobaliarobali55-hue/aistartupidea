@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, Zap, Crown, Sparkles, ChevronDown, ArrowRight, Loader2 } from 'lucide-react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
+
+// Backend URL — works for local dev and production on Render
+const API_BASE = import.meta.env.VITE_API_URL || 'https://aistartupidea.onrender.com';
 
 const plans = [
     {
@@ -105,22 +108,53 @@ const Pricing = ({ onSelectPlan, user }) => {
             toast.error('Please sign in to select a plan.');
             return;
         }
-        setLoading(plan.id);
-        try {
-            // Store plan in Firestore
-            await setDoc(doc(db, 'users', user.uid), {
-                plan: plan.id,
-                plan_limit: plan.limit === Infinity ? 999999 : plan.limit
-            }, { merge: true });
 
-            toast.success(`${plan.name} plan activated! 🎉`);
-            if (onSelectPlan) onSelectPlan(plan.id, plan.limit);
+        setLoading(plan.id);
+
+        try {
+            // ── Free plan: update Firestore directly (no payment needed) ──
+            if (plan.id === 'free') {
+                await setDoc(doc(db, 'users', user.uid), {
+                    plan: 'free',
+                    plan_limit: 2,
+                }, { merge: true });
+
+                toast.success('Free plan activated! Start building 🚀');
+                if (onSelectPlan) onSelectPlan('free', 2);
+                return;
+            }
+
+            // ── Paid plans: create a real Dodo checkout session ──
+            const idToken = await auth.currentUser.getIdToken();
+
+            const response = await fetch(`${API_BASE}/api/payments/create-checkout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`,
+                },
+                body: JSON.stringify({ planId: plan.id }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.checkoutUrl) {
+                throw new Error(data.error || 'Failed to create checkout session. Please try again.');
+            }
+
+            // Redirect to Dodo's hosted checkout page
+            toast.success('Redirecting to secure checkout...', { duration: 2000 });
+            window.location.href = data.checkoutUrl;
+
         } catch (err) {
-            toast.error(err.message || 'Failed to activate plan.');
+            console.error('Payment error:', err);
+            toast.error(err.message || 'Something went wrong. Please try again.');
         } finally {
             setLoading(null);
         }
     };
+
+
 
     return (
         <div className="min-h-screen bg-[#060606] text-white px-4 py-24">
