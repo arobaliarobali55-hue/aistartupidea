@@ -36,6 +36,10 @@ const PLAN_PRODUCT_MAP = {
     founder: process.env.DODO_FOUNDER_PRODUCT_ID,
 };
 
+if (!process.env.DODO_PRO_PRODUCT_ID || !process.env.DODO_FOUNDER_PRODUCT_ID) {
+    console.warn('⚠️ WARNING: DODO_PRO_PRODUCT_ID or DODO_FOUNDER_PRODUCT_ID is missing from environment variables. Checkout sessions will fail.');
+}
+
 // Plan limits
 const PLAN_LIMITS = {
     free: 2,
@@ -128,7 +132,9 @@ app.post('/api/payments/create-checkout', verifyToken, async (req, res) => {
 
     const productId = PLAN_PRODUCT_MAP[planId];
     if (!productId) {
-        return res.status(500).json({ error: 'Product ID not configured for this plan.' });
+        const expectedEnvVar = planId === 'pro' ? 'DODO_PRO_PRODUCT_ID' : 'DODO_FOUNDER_PRODUCT_ID';
+        console.error(`❌ Checkout error: ${expectedEnvVar} is missing from the environment variables.`);
+        return res.status(500).json({ error: `Product ID not configured for the ${planId} plan. Please ensure ${expectedEnvVar} is set in your Render Environment Variables.` });
     }
 
     const frontendUrl = process.env.FRONTEND_URL || 'https://aistartupidea-seven.vercel.app';
