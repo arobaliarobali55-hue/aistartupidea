@@ -15,15 +15,20 @@ const PORT = process.env.PORT || 5000;
 // --- Firebase Admin Initialization ---
 if (!admin.apps.length) {
     admin.initializeApp({
-        projectId: process.env.FIREBASE_PROJECT_ID
+        projectId: process.env.FIREBASE_PROJECT_ID || 'dummy-project-id'
     });
 }
 
 // --- Dodo Payments Client ---
-const dodo = new DodoPayments({
-    bearerToken: process.env.DODO_API_KEY,
-    environment: 'live_mode', // Use 'test_mode' for sandbox
-});
+let dodo = null;
+try {
+    dodo = new DodoPayments({
+        bearerToken: process.env.DODO_API_KEY || process.env.DODO_PAYMENTS_API_KEY || 'dummy_key',
+        environment: 'live_mode',
+    });
+} catch (e) {
+    console.error('⚠️ Failed to initialize DodoPayments:', e.message);
+}
 
 // Map plan IDs to Dodo product IDs
 const PLAN_PRODUCT_MAP = {
@@ -86,7 +91,7 @@ app.use('/api/', limiter);
 
 // --- NVIDIA NIM (OpenAI-compatible) API Setup ---
 const openai = new OpenAI({
-    apiKey: process.env.NVIDIA_API_KEY,
+    apiKey: process.env.NVIDIA_API_KEY || 'dummy_key',
     baseURL: process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1',
 });
 
