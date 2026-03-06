@@ -21,11 +21,13 @@ if (!admin.apps.length) {
 
 // --- Dodo Payments Client ---
 let dodo = null;
+const dodoEnv = process.env.DODO_ENVIRONMENT || 'live_mode';
 try {
     dodo = new DodoPayments({
         bearerToken: process.env.DODO_API_KEY || process.env.DODO_PAYMENTS_API_KEY || 'dummy_key',
-        environment: 'live_mode',
+        environment: dodoEnv,
     });
+    console.log(`💳 DodoPayments Initialized in ${dodoEnv} environment.`);
 } catch (e) {
     console.error('⚠️ Failed to initialize DodoPayments:', e.message);
 }
@@ -125,16 +127,12 @@ app.get('/api/health', (req, res) => {
 // ─────────────────────────────────────────────
 
 app.get('/api/payments/config-check', verifyToken, (req, res) => {
-    const proId = process.env.DODO_PRO_PRODUCT_ID;
-    const founderId = process.env.DODO_FOUNDER_PRODUCT_ID;
-    const apiKey = process.env.DODO_API_KEY || process.env.DODO_PAYMENTS_API_KEY;
     res.json({
-        dodo_api_key_set: !!apiKey,
-        dodo_api_key_prefix: apiKey ? apiKey.substring(0, 8) + '...' : null,
-        dodo_pro_product_id: proId || '❌ NOT SET',
-        dodo_founder_product_id: founderId || '❌ NOT SET',
+        environment: process.env.DODO_ENVIRONMENT || 'live_mode',
+        dodo_api_key_set: !!(process.env.DODO_API_KEY || process.env.DODO_PAYMENTS_API_KEY),
+        pro_product: process.env.DODO_PRO_PRODUCT_ID || '❌ NOT SET',
+        founder_product: process.env.DODO_FOUNDER_PRODUCT_ID || '❌ NOT SET',
         dodo_webhook_secret_set: !!process.env.DODO_WEBHOOK_SECRET,
-        all_configured: !!(proId && founderId && apiKey),
     });
 });
 
@@ -203,9 +201,10 @@ app.post('/api/payments/create-checkout', verifyToken, async (req, res) => {
         // Handle specific Dodo API errors with clear messages
         const errMsg = err.message || '';
         const statusCode = err.status || err.statusCode || 500;
+
         if (statusCode === 404 || errMsg.includes('does not exist') || errMsg.includes('404')) {
-            return res.status(500).json({
-                error: `The Dodo product ID "${productId}" for the ${planId} plan does not exist or has been deleted. Please update the ${planId === 'pro' ? 'DODO_PRO_PRODUCT_ID' : 'DODO_FOUNDER_PRODUCT_ID'} environment variable in Render with a valid product ID from your Dodo dashboard.`
+            return res.status(400).json({
+                error: `Product not found. This usually happens when your API key mode (test/live) does not match the product mode. Current DODO_ENVIRONMENT: ${process.env.DODO_ENVIRONMENT || 'live_mode'}. Please check your Render environment variables.`
             });
         }
         if (statusCode === 401 || errMsg.includes('401') || errMsg.includes('Unauthorized') || errMsg.includes('Invalid API')) {
