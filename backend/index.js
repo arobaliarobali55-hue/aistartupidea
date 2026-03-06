@@ -161,23 +161,16 @@ app.post('/api/payments/create-checkout', verifyToken, async (req, res) => {
     try {
         console.log(`💳 Creating Dodo checkout for user ${userId} (${userEmail}), plan: ${planId}`);
 
-        const payment = await dodo.payments.create({
-            billing: {
-                city: 'N/A',
-                country: 'US',
-                state: 'N/A',
-                street: 'N/A',
-                zipcode: '00000',
-            },
+        const session = await dodo.checkoutSessions.create({
             customer: {
                 email: userEmail,
                 name: req.user.name || userEmail,
+                create_new_customer: false,
             },
             metadata: {
                 userId: userId,
                 planId: planId,
             },
-            payment_link: true,
             product_cart: [
                 {
                     product_id: productId,
@@ -187,7 +180,7 @@ app.post('/api/payments/create-checkout', verifyToken, async (req, res) => {
             return_url: `${frontendUrl}/?payment=success&plan=${planId}`,
         });
 
-        const checkoutUrl = payment.payment_link;
+        const checkoutUrl = session.checkout_url;
 
         if (!checkoutUrl) {
             throw new Error('Dodo did not return a checkout URL.');
